@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -24,6 +25,8 @@ type Token struct {
 	payload   string
 	signature []byte
 }
+
+var alg = ""
 
 func main() {
 
@@ -96,6 +99,9 @@ func crackJWT(token string, workerCount int, scanner *bufio.Scanner) bool {
 
 func checkSignature(secret string, headerPayload []byte, validSignature []byte) bool {
 	var h = hmac.New(sha256.New, []byte(secret))
+	if (alg == "HS512") {
+		h = hmac.New(sha512.New, []byte(secret))
+	}
 	h.Write(headerPayload)
 	if hmac.Equal(h.Sum(nil), validSignature) {
 		return true
@@ -124,13 +130,15 @@ func parseToken(token string) Token {
 		log.Fatal(err)
 	}
 
+	alg = h.Alg
+
 	if h.Typ != "JWT" {
 		log.Fatal("Invalid token")
 	}
 
-	if h.Alg != "HS256" {
-		log.Fatal("Currently only HS256 is supported")
-	}
+	//if h.Alg != "HS256" {
+	//	log.Fatal("Currently only HS256 is supported")
+	//}
 
 	base64Sig := t[2]
 	s, err := base64.RawURLEncoding.DecodeString(base64Sig)
